@@ -4,14 +4,14 @@
 # For details see the COPYRIGHT file distributed with LuaDist.
 # Please note that the package source code is licensed under its own license.
 
-PROJECT(luaposix C)
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-INCLUDE(dist.cmake)
+project ( luaposix C )
+cmake_minimum_required ( VERSION 2.6 )
+include ( dist.cmake )
 
 set ( FULL_VERSION 5.1.9 )
 
-FIND_LIBRARY(CRYPT_LIB crypt)
-FIND_LIBRARY(RT_LIB rt)
+find_library ( CRYPT_LIB crypt )
+find_library ( RT_LIB rt )
 
 add_definitions ( -DVERSION="${FULL_VERSION}" )
 
@@ -23,15 +23,12 @@ else ()
   add_definitions ( -D_XOPEN_SOURCE=700 )
 endif ()
 
+install_lua_module ( posix lposix.c )
+target_link_libraries ( posix ${CRYPT_LIB} ${RT_LIB} )
 
-ADD_LUA_MODULE(posix lposix.c)
-TARGET_LINK_LIBRARIES(posix ${CRYPT_LIB} ${RT_LIB})
-
-ADD_LUA_TEST(test.lua)
-
-INSTALL (TARGETS posix DESTINATION ${INSTALL_CMOD})
-INSTALL (FILES README DESTINATION ${INSTALL_DATA})
-INSTALL (FILES test.lua DESTINATION ${INSTALL_TEST})
-INSTALL (FILES tree.lua DESTINATION ${INSTALL_FOO})
+install_data ( README )
+install_test ( test.lua )
+install_foo ( tree.lua )
 # not installed: ChangeLog.old
 
+add_lua_test ( test.lua )
