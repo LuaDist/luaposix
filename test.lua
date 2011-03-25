@@ -50,7 +50,7 @@ testing"setenv"
 function f(n,v) print("setenv",n,'=',v) ox.setenv(n,v) end
 function g(n) print("now",n,'=',ox.getenv(n)) end
 f("MYVAR","123");	g"MYVAR"
-f("MYVAR",nil);	    g"MYVAR"
+f("MYVAR",nil);     g"MYVAR"
 --f"MYVAR"	g"MYVAR"
 
 ------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ f(d)
 myassert("rmdir",ox.rmdir"x")
 
 ------------------------------------------------------------------------------
-testing"fork, exec"
+testing"fork, execp"
 io.flush()
 pid=assert(ox.fork())
 if pid==0 then
@@ -83,11 +83,12 @@ if pid==0 then
 	ppid=ox.getpid"ppid"
 	io.write("in child process ",pid," from ",ppid,".\nnow executing date... ")
 	io.flush()
-	assert(ox.exec("date","+[%c]"))
+	assert(ox.execp("date","+[%c]"))
 	print"should not get here"
 else
 	io.write("process ",ox.getpid"pid"," forked child process ",pid,". waiting...\n")
-	ox.wait(pid)
+	p,msg,ret = ox.wait(pid)
+	assert(p == pid and msg == "exited" and ret == 0)
 	io.write("child process ",pid," done\n")
 end
 
@@ -172,7 +173,7 @@ function f(x)
  if a==nil then
    print(x,"no such user")
   else
-   myprint(":",a.name,a.passwd,a.uid,a.gid,a.gecos,a.dir,a.shell)
+   myprint(":",a.name,a.passwd,a.uid,a.gid,a.dir,a.shell)
  end
 end
 
@@ -183,7 +184,7 @@ f"root"
 f(0)
 f(1234567)
 f"xxx"
-function f(x) print(ox.getpasswd(x,"name"),ox.getpasswd(x,"gecos")) end
+function f(x) print(ox.getpasswd(x,"name"),ox.getpasswd(x,"shell")) end
 f()
 f(nil)
 --ox.putenv"USER=root"

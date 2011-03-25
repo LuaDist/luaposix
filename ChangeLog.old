@@ -1,3 +1,6 @@
+History is now tracked in git.
+https://github.com/rrthomas/luaposix
+
 2008-07-18 Natanael Copa <natanael.copa _AT_ gmail.com>
   * fix rpoll to ignore the POLLHUP and POLLNVAL reported at:
     http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=491257
@@ -20,6 +23,10 @@
       http://lua-users.org/lists/lua-l/2007-11/msg00346.html
     o cleaned up Makefile
 
+2006-10-16  Leo Razoumov <slonik.az _AT_ gmail.com>
+  * Added glob wrapper (Pglob) implementated by George <j4y54w _AT_ sawinski.de>
+    Created corresponding test.
+
 2006-10-12  Leo Razoumov <slonik.az _AT_ gmail.com>
   * Starting with Luiz Henrique de Figueiredo (LHF) 2006-04-07 version of
     lposix.c fixed the following problems when compiling for Lua-5.1 (Lua-5.1.x)
@@ -35,9 +42,3 @@
   * Deleted posix.lua loader file not needed anymore in Lua-5.1 module system
   * Remaining problems: Pumask does not take mask in octal form, it only
     understand alphabetic notation like "u=rwx"
-
-2006-10-16  Leo Razoumov <slonik.az _AT_ gmail.com>
-  * Added glob wrapper (Pglob) implementated by George <j4y54w _AT_ sawinski.de>
-    Created corresponding test.
-	
---EOF--
