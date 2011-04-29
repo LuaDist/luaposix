@@ -1,10 +1,10 @@
 --- This file is part of LuaDist project
 
 name = "luaposix"
-version = "5.1.9"
+version = "5.1.11"
 
 desc = "A POSIX library for Lua."
-author = "Natanael Copa, Luiz Henrique de Figueiredo"
+author = "Natanael Copa, Luiz Henrique de Figueiredo, Reuben Thomas"
 url = "http://luaforge.net/projects/luaposix/"
 license = "Public domain"
 maintainer = "Peter Kapec"

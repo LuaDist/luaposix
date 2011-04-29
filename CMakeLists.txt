@@ -8,7 +8,7 @@ project ( luaposix C )
 cmake_minimum_required ( VERSION 2.6 )
 include ( dist.cmake )
 
-set ( FULL_VERSION 5.1.9 )
+set ( FULL_VERSION 5.1.11 )
 
 find_library ( CRYPT_LIB crypt )
 find_library ( RT_LIB rt )
@@ -18,6 +18,7 @@ add_definitions ( -DVERSION="${FULL_VERSION}" )
 if ( APPLE )
   # FIXME:  LDFLAGS_SHARED=-bundle -undefined dynamic_lookup
   # omit rt and crypt?
+  add_definitions ( -D_POSIX_C_SOURCE )
 else ()
   # FIXME: Make rt conditional on _XOPEN_REALTIME
   add_definitions ( -D_XOPEN_SOURCE=700 )
