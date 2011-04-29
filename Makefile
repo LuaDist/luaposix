@@ -13,7 +13,7 @@ INSTALL=	install
 
 # no need to change anything below here
 PACKAGE=	luaposix
-LIBVERSION=	9
+LIBVERSION=	11
 RELEASE=	$(LUAVERSION).$(LIBVERSION)
 
 GIT_REV		:= $(shell test -d .git && git describe --always)
@@ -38,6 +38,7 @@ OS=$(shell uname)
 ifeq ($(OS),Darwin)
   LDFLAGS_SHARED=-bundle -undefined dynamic_lookup
   LIBS=
+	CFLAGS += -D_POSIX_C_SOURCE
 else
   LDFLAGS_SHARED=-shared
   # FIXME: Make -lrt conditional on _XOPEN_REALTIME

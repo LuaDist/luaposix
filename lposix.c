@@ -1,8 +1,8 @@
 /*
 * lposix.c
 * POSIX library for Lua 5.1.
-* (c) Natanael Copa (maintainer) <natanael.copa@gmail.com> 2008-2010
-* (c) Reuben Thomas <rrt@sc3d.org> 2010
+* (c) Reuben Thomas (maintainer) <rrt@sc3d.org> 2010-2011
+* (c) Natanael Copa <natanael.copa@gmail.com> 2008-2010
 * Clean up and bug fixes by Leo Razoumov <slonik.az@gmail.com> 2006-10-11
 * Luiz Henrique de Figueiredo <lhf@tecgraf.puc-rio.br> 07 Apr 2006 23:17:49
 * Based on original by Claudio Terra for Lua 3.x.
@@ -235,10 +235,10 @@ static int mode_munch(mode_t *mode, const char* p)
 			switch (op)
 			{
 			case '+':
-				*mode = *mode |= ch_mode & affected_bits;
+				*mode |= ch_mode & affected_bits;
 				break;
 			case '-':
-				*mode = *mode &= ~(ch_mode & affected_bits);
+				*mode &= ~(ch_mode & affected_bits);
 				break;
 			case '=':
 				*mode = ch_mode & affected_bits;
@@ -599,7 +599,7 @@ static int Pfdopen(lua_State *L)	/** fdopen(fd, mode) */
 	int fd = luaL_checkint(L, 1);
 	const char *mode = luaL_checkstring(L, 2);
 	if (!pushfile(L, fd, mode))
-		return pusherror(L, "fdpoen");
+		return pusherror(L, "fdopen");
 	return 1;
 }
 
@@ -646,6 +646,28 @@ static int Pmkfifo(lua_State *L)		/** mkfifo(path) */
 	return pushresult(L, mkfifo(path, 0777), path);
 }
 
+
+static int Pmkstemp(lua_State *L)                 /** mkstemp(path) */
+{
+	const char *path = luaL_checkstring(L, 1);
+	void *ud;
+	lua_Alloc lalloc = lua_getallocf(L, &ud);
+	char *tmppath;
+	int res;
+
+	if ((tmppath = lalloc(ud, NULL, 0, strlen(path) + 1)) == NULL)
+		return 0;
+	strcpy(tmppath, path);
+	res = mkstemp(tmppath);
+
+	if (res == -1)
+		return pusherror(L, path);
+
+	lua_pushinteger(L, res);
+	lua_pushstring(L, tmppath);
+	lalloc(ud, tmppath, 0, 0);
+	return 2;
+}
 
 static int runexec(lua_State *L, int use_shell)
 {
@@ -1328,24 +1350,24 @@ static int Pcrypt(lua_State *L)		/** crypt(string,salt) */
  *	limit, obtained by calling getrlimit().
  *
  *	Valid resouces are:
- *		"core", "cpu", "data", "fsize", "memlock",
- *		"nofile", "nproc", "rss", "stack"
+ *		"core", "cpu", "data", "fsize",
+ *		"nofile", "stack", "as"
  *
  *	Example usage:
- *	posix.setrlimit("NOFILE", 1000, 2000)
+ *	posix.setrlimit("nofile", 1000, 2000)
  */
 
 static const int Krlimit[] =
 {
-	RLIMIT_CORE, RLIMIT_CPU, RLIMIT_DATA, RLIMIT_FSIZE, RLIMIT_MEMLOCK,
-	RLIMIT_NOFILE, RLIMIT_NPROC, RLIMIT_RSS, RLIMIT_STACK,
+	RLIMIT_CORE, RLIMIT_CPU, RLIMIT_DATA, RLIMIT_FSIZE,
+	RLIMIT_NOFILE, RLIMIT_STACK, RLIMIT_AS,
 	-1
 };
 
 static const char *const Srlimit[] =
 {
-	"core", "cpu", "data", "fsize", "memlock",
-	"nofile", "nproc", "rss", "stack",
+	"core", "cpu", "data", "fsize",
+	"nofile", "stack", "as",
 	NULL
 };
 
@@ -1478,6 +1500,7 @@ static int Pgmtime(lua_State *L)		/** gmtime([time]) */
 	return 1;
 }
 
+#if defined (_XOPEN_REALTIME) && _XOPEN_REALTIME != -1
 static int get_clk_id_const(const char *str)
 {
 	if (str == NULL)
@@ -1492,7 +1515,6 @@ static int get_clk_id_const(const char *str)
 		return CLOCK_REALTIME;
 }
 
-#ifdef _XOPEN_REALTIME
 static int Pclock_getres(lua_State *L)		/** clock_getres([clockid]) */
 {
 	struct timespec res;
@@ -1734,7 +1756,7 @@ static const luaL_reg R[] =
 	{"chdir",		Pchdir},
 	{"chmod",		Pchmod},
 	{"chown",		Pchown},
-#ifdef _XOPEN_REALTIME
+#if defined (_XOPEN_REALTIME) && _XOPEN_REALTIME != -1
 	{"clock_getres",	Pclock_getres},
 	{"clock_gettime",	Pclock_gettime},
 #endif
@@ -1772,6 +1794,7 @@ static const luaL_reg R[] =
 	{"localtime",		Plocaltime},
 	{"mkdir",		Pmkdir},
 	{"mkfifo",		Pmkfifo},
+	{"mkstemp",             Pmkstemp},
 	{"pathconf",		Ppathconf},
 	{"pipe",		Ppipe},
 	{"raise",		Praise},
