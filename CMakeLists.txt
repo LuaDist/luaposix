@@ -6,7 +6,8 @@
 
 project ( luaposix C )
 cmake_minimum_required ( VERSION 2.6 )
-include ( dist.cmake )
+include ( cmake/dist.cmake )
+include ( cmake/lua.cmake )
 
 set ( VERSION 5.1.19 )
 
