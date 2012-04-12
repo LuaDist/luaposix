@@ -11,6 +11,10 @@ set ( INSTALL_CMOD ${INSTALL_LIB}/lua CACHE PATH "Directory to install Lua binar
 
 option ( SKIP_LUA_WRAPPER "Do not build and install Lua executable wrappers." OFF)
 
+# List of (Lua module name, file path) pairs.
+# Used internally by add_lua_test.  Built by install_lua_module.
+set ( _lua_modules )
+
 # install_lua_executable ( target source )
 # Automatically generate a binary wrapper for lua application and install it
 # The wrapper and the source of the application will be placed into /bin
@@ -164,9 +168,10 @@ macro (install_lua_module _name )
   parse_arguments ( _MODULE "LINK" "" ${ARGN} )
   get_filename_component ( _ext ${ARGV1} EXT )
   if ( _ext STREQUAL ".lua" )
-      get_filename_component ( _path ${_lua_module} PATH )
-      get_filename_component ( _filename ${_lua_module} NAME )
-      install ( FILES ${ARGV1} DESTINATION ${INSTALL_LMOD}/${_path} RENAME ${_filename} )
+     get_filename_component ( _path ${_lua_module} PATH )
+     get_filename_component ( _filename ${_lua_module} NAME )
+     install ( FILES ${ARGV1} DESTINATION ${INSTALL_LMOD}/${_path} RENAME ${_filename} )
+     list ( APPEND _lua_modules "${_name}" "${CMAKE_CURRENT_SOURCE_DIR}/${ARGV1}" )
   else ()
      enable_language ( C )
      get_filename_component ( _module_name ${_bin_module} NAME_WE )
@@ -180,15 +185,33 @@ macro (install_lua_module _name )
      set_target_properties ( ${_target} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${_module_path}" PREFIX "" OUTPUT_NAME "${_module_name}" )
      
      install ( TARGETS ${_target} DESTINATION ${INSTALL_CMOD}/${_module_path})
+     list ( APPEND _lua_modules "${_name}" "${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_CFG_INTDIR}/${_bin_module}" )
   endif ()
 endmacro ()
 
+# Builds string representing Lua table mapping Lua modules names to file
+# paths.  Used internally.
+macro ( _make_module_table _outvar )
+	set ( ${_outvar} )
+	list ( LENGTH _lua_modules _n )
+	foreach ( _i RANGE 1 ${_n} 2 )
+		list ( GET _lua_modules ${_i} _path )
+		math ( EXPR _ii ${_i}-1 )
+		list ( GET _lua_modules ${_ii} _name )
+		set ( ${_outvar} "${_table}  ['${_name}'] = '${_path}'\;\n")
+	endforeach ()
+	set ( ${_outvar}
+"local modules = {
+${_table}}" )
+endmacro ()
 
-# add_lua_test
+# add_lua_test ( _testfile [ WORKING_DIRECTORY _working_dir ] )
 # Runs Lua script `_testfile` under CTest tester.
 # Optional named argument `WORKING_DIRECTORY` is current working directory to run test under
 # (defaults to ${CMAKE_CURRENT_BINARY_DIR}).
 # Both paths, if relative, are relative to ${CMAKE_CURRENT_SOURCE_DIR}.
+# Any modules previously defined with install_lua_module are automatically preloaded
+# (via package.preload) prior to running the test script.
 # Under LuaDist, set test=true in config.lua to enable testing.
 # USE: add_lua_test ( test/test1.lua [args...] [WORKING_DIRECTORY dir])
 macro ( add_lua_test _testfile )
@@ -201,12 +224,27 @@ macro ( add_lua_test _testfile )
 		get_filename_component ( TESTFILEBASE ${_testfile} NAME_WE )
 
 		# Write wrapper script.
+		# Note: One simple way to allow the script to find modules is
+		# to just put them in package.preload.
 		set ( TESTWRAPPER ${CMAKE_CURRENT_BINARY_DIR}/${TESTFILENAME} )
+		_make_module_table ( _table )
 		set ( TESTWRAPPERSOURCE
 "local configuration = ...
-local sodir = '${CMAKE_CURRENT_BINARY_DIR}' .. (configuration == '' and '' or '/' .. configuration)
-package.path  = sodir .. '/?.lua\;' .. sodir .. '/?.lua\;' .. package.path
-package.cpath = sodir .. '/?.so\;'  .. sodir .. '/?.dll\;' .. package.cpath
+${_table}
+local function preload_modules(modules)
+  for name, path in pairs(modules) do
+    if path:match'%.lua' then
+      package.preload[name] = assert(loadfile(path))
+    else
+      local name = name:gsub('.*%-', '') -- remove any hyphen prefix
+      local symbol = 'luaopen_' .. name:gsub('%.', '_')
+          --improve: generalize to support all-in-one loader?
+      local path = path:gsub('%$%{CMAKE_CFG_INTDIR%}', configuration or '')
+      package.preload[name] = assert(package.loadlib(path, symbol))
+    end
+  end
+end
+preload_modules(modules)
 arg[0] = '${TESTFILEABS}'
 table.remove(arg, 1)
 return assert(loadfile '${TESTFILEABS}')(unpack(arg))

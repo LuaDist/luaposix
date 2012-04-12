@@ -69,5 +69,3 @@ endif ()
 add_lua_test ( tests-posix.lua )
 add_lua_test ( tests-curses.lua )
 file ( WRITE ${CMAKE_CURRENT_BINARY_DIR}/tmp.la "" ) # for tests-posix.lua
-configure_file ( curses.lua curses.lua COPYONLY ) #2DO: improve dist.cmake to avoid this
-configure_file ( posix.lua posix.lua COPYONLY ) #2DO: improve dist.cmake to avoid this
