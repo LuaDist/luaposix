@@ -15,6 +15,16 @@ option ( SKIP_LUA_WRAPPER "Do not build and install Lua executable wrappers." OF
 # Used internally by add_lua_test.  Built by install_lua_module.
 set ( _lua_modules )
 
+# utility function: appends path `path` to path `basepath`, properly
+# handling cases when `path` may be relative or absolute.
+macro ( _append_path basepath path result )
+  if ( IS_ABSOLUTE "${path}" )
+    set ( ${result} "${path}" )
+  else ()
+    set ( ${result} "${basepath}/${path}" )
+  endif ()
+endmacro ()
+
 # install_lua_executable ( target source )
 # Automatically generate a binary wrapper for lua application and install it
 # The wrapper and the source of the application will be placed into /bin
@@ -171,7 +181,8 @@ macro (install_lua_module _name )
      get_filename_component ( _path ${_lua_module} PATH )
      get_filename_component ( _filename ${_lua_module} NAME )
      install ( FILES ${ARGV1} DESTINATION ${INSTALL_LMOD}/${_path} RENAME ${_filename} )
-     list ( APPEND _lua_modules "${_name}" "${CMAKE_CURRENT_SOURCE_DIR}/${ARGV1}" )
+     _append_path ( "${CMAKE_CURRENT_SOURCE_DIR}" "${ARGV1}" _path )
+     list ( APPEND _lua_modules "${_name}" "${_path}" )
   else ()
      enable_language ( C )
      get_filename_component ( _module_name ${_bin_module} NAME_WE )
