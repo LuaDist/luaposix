@@ -1,0 +1,36 @@
+type = "x86_64"
+arch = "Ubuntu"
+author = "Natanael Copa, Luiz Henrique de Figueiredo, Reuben Thomas"
+depends = {
+[[lua ~> 5.1]],
+}
+
+desc = "A POSIX library for Lua."
+version = "5.1.19"
+maintainer = "Peter Kapec"
+files = {
+Runtime = {
+[[lib/lua/posix_c.so]],
+[[lib/lua/posix.lua]],
+[[lib/lua/curses_c.so]],
+[[lib/lua/curses.lua]],
+}
+,
+Documentation = {
+[[share/luaposix/doc/curses.html]],
+}
+,
+Data = {
+[[share/luaposix/README]],
+[[share/luaposix/COPYING]],
+}
+,
+Other = {
+[[share/luaposix/etc/tree.lua]],
+}
+,
+}
+
+url = "http://luaforge.net/projects/luaposix/"
+name = "luaposix"
+license = "MIT/X"
