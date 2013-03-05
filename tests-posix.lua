@@ -1,5 +1,8 @@
 -- test posix library
 
+local bit
+if _VERSION == "Lua 5.1" then bit = require 'bit' else bit = require 'bit32' end
+
 local ox = require 'posix'
 
 function testing(s)
@@ -76,20 +79,25 @@ myassert("rmdir",ox.rmdir"x")
 ------------------------------------------------------------------------------
 testing"fork, execp"
 io.flush()
-pid=assert(ox.fork())
-if pid==0 then
-  pid=ox.getpid"pid"
-  ppid=ox.getpid"ppid"
-  io.write("in child process ",pid," from ",ppid,".\nnow executing date... ")
-  io.flush()
-  assert(ox.execp("date","+[%c]"))
-  print"should not get here"
-else
-  io.write("process ",ox.getpid"pid"," forked child process ",pid,". waiting...\n")
-  p,msg,ret = ox.wait(pid)
-  assert(p == pid and msg == "exited" and ret == 0)
-  io.write("child process ",pid," done\n")
+function test_fork (use_table)
+  local pid=assert(ox.fork())
+  if pid==0 then
+    pid=ox.getpid"pid"
+    local ppid=ox.getpid"ppid"
+    io.write("in child process ",pid," from ",ppid,".\nnow executing date... ")
+    io.flush()
+    assert(ox.execp("date",use_table and {"+[%c]"} or "+[%c]"))
+    print"should not get here"
+  else
+    io.write("process ",ox.getpid"pid"," forked child process ",pid,". waiting...\n")
+    local p,msg,ret = ox.wait(pid)
+    assert(p == pid and msg == "exited" and ret == 0)
+    io.write("child process ",pid," done\n")
+  end
 end
+test_fork(false) -- test passing command arguments as scalars
+test_fork(true) -- test passing command arguments in a table
+-- FIXME: test setting argv[0]
 
 ------------------------------------------------------------------------------
 testing"dir, stat"
@@ -109,6 +117,20 @@ assert(ox.basename(s)=="bar")
 assert(ox.dirname(s)=="/foo")
 
 ------------------------------------------------------------------------------
+testing"statvfs"
+local st = ox.statvfs("/")
+print("bsize=" .. st.bsize)
+print("frsize=" .. st.frsize)
+print("blocks=" .. st.blocks)
+print("bfree=" .. st.bfree)
+print("bavail=" .. st.bavail)
+print("files=" .. st.files)
+print("ffree=" .. st.ffree)
+print("favail=" .. st.favail)
+print("fsid=" .. st.fsid)
+print("flag=" .. st.flag)
+print("namemax=" .. st.namemax)
+------------------------------------------------------------------------------
 testing"fnmatch"
 assert(ox.fnmatch("test", "test"))
 assert(ox.fnmatch("tes*", "test"))
@@ -121,15 +143,65 @@ assert(ox.fnmatch("*test", "/test", ox.FNM_PATHNAME) == false)
 assert(ox.fnmatch("*test", ".test", ox.FNM_PERIOD) == false)
 
 ------------------------------------------------------------------------------
-testing"glob"
-function g() local d=ox.getcwd() print("now at",d) return d end
-g()
-for _,f in pairs(ox.glob "*.la") do
+testing"mkdtemp,mkstemp,glob,isatty"
+local tmpdir=ox.getenv("TMPDIR") or "/tmp"
+local testdir,err=ox.mkdtemp(tmpdir.."/luaposix-test-XXXXXX")
+assert(testdir, err)
+local st=ox.stat(testdir)
+assert(st.type=="directory")
+assert(st.mode=="rwx------")
+
+-- test mkstemp() ...
+local filename_template=testdir.."/test.XXXXXX"
+local first_fd,first_filename=ox.mkstemp(filename_template)
+assert(first_fd, first_filename) -- on error, first_filename contain error
+
+-- ... ensure fd was connected to _this_ filename, write something to fd ...
+ox.write(first_fd, "12345")
+ox.close(first_fd)
+st=ox.stat(first_filename)
+assert(st.mode=="rw-------")
+assert(st.size==5)
+
+-- ... then read and compare
+first_fd, err =ox.open(first_filename, ox.O_RDONLY)
+assert(first_fd, err)
+assert(not ox.isatty(first_fd))
+assert(ox.read(first_fd, 5) == "12345")
+local second_fd,second_filename=ox.mkstemp(filename_template)
+assert(second_filename)
+assert(second_filename~=first_filename)
+st=ox.stat(second_filename)
+assert(st.mode=="rw-------")
+
+-- clean up after tests
+ox.close(first_fd)
+ox.close(second_fd)
+
+-- create extra empty file, to check glob()
+local extra_filename=testdir.."/extra_file"
+local extra_file_fd, err=ox.open(extra_filename, bit.bor (ox.O_RDWR, ox.O_CREAT), "r--------")
+assert(extra_file_fd, err)
+ox.close(extra_file_fd)
+
+local saved_cwd=ox.getcwd()
+ox.chdir(testdir)
+local globlist, err = ox.glob("test.*")
+assert(globlist, err)
+for _,f in pairs(globlist) do
   local T=assert(ox.stat(f))
   local p=assert(ox.getpasswd(T.uid))
   local g=assert(ox.getgroup(T.gid))
+  assert(ox.basename(f):sub(1,5) == "test.") -- ensure extra_file NOT included
   print(T.mode,p.name.."/"..g.name,T.size,os.date("%b %d %H:%M",T.mtime),f,T.type)
 end
+ox.chdir(saved_cwd)
+ox.unlink(extra_filename)
+ox.unlink(first_filename)
+ox.unlink(second_filename)
+ox.rmdir(testdir)
+st=ox.stat(testdir)
+assert(st==nil) -- ensure directory is removed
 
 ------------------------------------------------------------------------------
 testing"umask"
@@ -142,6 +214,18 @@ print(ox.umask("o+w"))
 io.close(io.open("xxx","w"))
 os.execute"ls -l xxx"
 ox.unlink"xxx"
+
+------------------------------------------------------------------------------
+testing"pseudoterminal"
+do
+    local master = assert(ox.openpt(ox.O_RDWR+ox.O_NOCTTY))
+    assert(ox.grantpt(master))
+    assert(ox.unlockpt(master))
+    local slavename = assert(ox.ptsname(master))
+    local slave = assert(ox.open(slavename, ox.O_RDWR+ox.O_NOCTTY))
+    ox.close(slave)
+    ox.close(master)
+end
 
 ------------------------------------------------------------------------------
 testing"chmod, access"
@@ -204,7 +288,6 @@ f"xxx"
 function f(x) print(ox.getpasswd(x,"name"),ox.getpasswd(x,"shell")) end
 f()
 f(nil)
---ox.putenv"USER=root"
 ox.setenv("USER","root")
 f(ox.getenv"USER")
 
@@ -223,6 +306,11 @@ local testdata = ox.read(rpipe, 4)
 assert(testdata == "test")
 ox.close(rpipe)
 ox.close(wpipe)
+------------------------------------------------------------------------------
+testing "crypt"
+local r = ox.crypt("hello", "pl")
+assert(r == ox.crypt("hello", "pl"))
+print(r)
 
 ------------------------------------------------------------------------------
 if arg[1] ~= "--no-times" then
@@ -237,6 +325,31 @@ if arg[1] ~= "--no-times" then
   print("elapsed",b.elapsed-a.elapsed)
   print("clock",os.clock())
 end
+
+------------------------------------------------------------------------------
+testing"gettimeofday"
+x=ox.gettimeofday()
+for k,v in pairs(x) do print(k,v) end
+y=ox.timeradd(x,{usec=999999})
+assert (ox.timercmp(x,x) == 0)
+assert (ox.timercmp(x,y) < 0)
+assert (ox.timercmp(y,x) > 0)
+y=ox.timersub(y,{usec=999999})
+assert (ox.timercmp(x,y) == 0)
+
+------------------------------------------------------------------------------
+testing"msgget/msgsnd/msgrcv"
+mq, err, errno = ox.msgget(100, bit.bor(ox.IPC_CREAT, ox.IPC_EXCL), "rwxrwxrwx")
+if errno == ox.EEXIST then
+	mq, err = ox.msgget(100, 0, "rwxrwxrwx")
+end
+assert (mq, err)
+a, err = ox.msgsnd(mq, 42, 'Answer to the Ultimate Question of Life')
+assert(a, err)
+mtype, mtext, err = ox.msgrcv(mq, 128)
+assert(mtype == 42)
+assert(mtext == 'Answer to the Ultimate Question of Life')
+assert(err == nil)
 
 ------------------------------------------------------------------------------
 io.stderr:write("\n\n==== ", ox.version, " tests completed ====\n\n")

@@ -1,16 +1,18 @@
 dnl Process this file with autoconf to produce a configure script
 
-AC_INIT(luaposix, 5.1.19, rrt@sc3d.org)
+AC_INIT(luaposix, 5.1.26, rrt@sc3d.org)
 AC_CONFIG_AUX_DIR([build-aux])
 
-AM_INIT_AUTOMAKE([-Wall -Werror std-options])
+AM_INIT_AUTOMAKE([-Wall foreign])
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 dnl Check for programs
 AC_PROG_CC
 gl_EARLY
+AC_PROG_MKDIR_P
 
+AC_USE_SYSTEM_EXTENSIONS
 AC_ARG_ENABLE([gcc-warnings],
   [AS_HELP_STRING([--enable-gcc-warnings],
                   [turn on lots of GCC warnings (for developers)])],
@@ -57,12 +59,12 @@ if test "$gl_gcc_warnings" = yes; then
   gl_WARN_ADD([-fmudflap])
 fi
 
+dnl required by automake 1.12.x, not available in 1.10.x
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+
 LT_PREREQ([2.2.6])
 LT_INIT([disable-static])
-LT_OUTPUT
 
-eval `./libtool --config |grep '^objdir='`
-eval `./libtool --config |grep '^shrext_cmds='`
 module=yes eval shrext=$shrext_cmds
 
 AC_SUBST([objdir])
@@ -73,13 +75,14 @@ gl_INIT
 
 dnl Check for header files
 AC_HEADER_STDC
+AC_CHECK_HEADERS([crypt.h sys/statvfs.h])
 
 dnl Search libs
-AC_SEARCH_LIBS(crypt, crypt)
+AC_SEARCH_LIBS([crypt], [crypt],
+  [AC_DEFINE([HAVE_CRYPT], [], [Define this if your system has a crypt() function])])
 
 dnl Check for functions
-AC_CHECK_FUNCS([strlcpy])
-AC_CHECK_FUNCS([crypt])
+AC_CHECK_FUNCS([strlcpy statvfs])
 
 dnl Compiler flags for POSIX
 dnl Get this from autotools/gnulib
@@ -101,12 +104,14 @@ AC_ARG_VAR(CURSES_LIB, [linker flags for curses library])
 AC_SUBST(WANTEDLIBS)
 AC_SUBST(WANTEDLUA)
 
+save_LIBS=$LIBS
+LIBS="$CURSES_LIB $LIBS"
+AC_CHECK_FUNCS([resizeterm])
+LIBS=$save_LIBS
+
 dnl Lua 5.1 or 5.2
-AX_PROG_LUA(501, 503)
+AX_PROG_LUA(5.1, 5.3)
 AX_LUA_HEADERS
-AX_LUA_HEADERS_VERSION(501, 503)
-AC_SUBST(LUA)
-AC_SUBST(LUA_INCLUDE)
 
 dnl Perl
 AX_WITH_PROG([PERL], [perl])
@@ -114,11 +119,12 @@ if test -z "$PERL"; then
   AC_MSG_FAILURE([cannot find perl])
 fi
 
-dnl md5sum
-AX_WITH_PROG([MD5SUM], [md5sum], [false])
+dnl ldoc
+AX_WITH_PROG([LDOC], [ldoc], [false])
+AM_CONDITIONAL([HAVE_LDOC], [test false != "$LDOC"])
 
 dnl Generate output files
 AC_CONFIG_MACRO_DIR(m4)
 AC_CONFIG_HEADER(config.h)
-AC_CONFIG_FILES(Makefile lib/Makefile $PACKAGE.rockspec)
+AC_CONFIG_FILES([Makefile luarocks-config.lua])
 AC_OUTPUT
