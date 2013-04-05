@@ -10,5 +10,6 @@ license = "MIT/X"
 maintainer = "Peter Kapec"
 
 depends = {
-	"lua => 5.1"
+  "lua >= 5.1",
+  "luabitop >= 1.0.2",
 }
