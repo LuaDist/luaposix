@@ -125,7 +125,7 @@ static int Pisgraph(lua_State *L)
 
 /***
 Check for any printable character including space.
-@function isgraph
+@function isprint
 @see isgraph(3)
 @string character to check
 @return true if character is in the class
@@ -901,11 +901,7 @@ static int runexec(lua_State *L, int use_shell)
 	const char *path = luaL_checkstring(L, 1);
 	int i,n=lua_gettop(L), table = 0;
 	if (n >= 1 && lua_type(L, 2) == LUA_TTABLE) {
-		int isint;
-		lua_len(L, 2);
-		n = lua_tointegerx(L, -1, &isint);
-		if (!isint)
-			luaL_error(L, "argument 2 is a table, but has non-numeric length");
+		n = lua_objlen(L, 2);
 		table = 1;
 	} else
 		n--;
@@ -1417,7 +1413,7 @@ Send message to a message queue
 @function msgsnd
 @see msgsnd(2)
 @int id - message queue identifier returned by msgget
-@long type - message type
+@int type - message type
 @string message
 @int flags (optional, default - 0)
 @return 0 on success
@@ -1465,7 +1461,7 @@ Receive message from a message queue
 @see msgrcv(2)
 @int id - message queue identifier returned by msgget
 @int size - maximum message size
-@long type - message type (optional, default - 0)
+@int type - message type (optional, default - 0)
 @int flags (optional, default - 0)
 @return message type and message text on success
 @return nil, nil and error message if failed
@@ -1735,6 +1731,7 @@ static int Pdup2(lua_State *L)
 
 /***
 Creates a pipe.
+@function pipe
 @see pipe(2)
 @return fd read end
 @return fd write end
