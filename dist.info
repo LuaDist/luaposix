@@ -1,7 +1,7 @@
 --- This file is part of LuaDist project
 
 name = "luaposix"
-version = "5.1.19"
+version = "5.1.28"
 
 desc = "A POSIX library for Lua."
 author = "Natanael Copa, Luiz Henrique de Figueiredo, Reuben Thomas"
@@ -10,5 +10,5 @@ license = "MIT/X"
 maintainer = "Peter Kapec"
 
 depends = {
-	"lua ~> 5.1"
+	"lua => 5.1"
 }
